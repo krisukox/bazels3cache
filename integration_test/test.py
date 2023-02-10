@@ -36,7 +36,7 @@ class TestBazelCache(unittest.TestCase):
             cwd=test_workspace,
         )
         print(result.stdout)
-        self.assertEqual(result.stdout.find("12 remote cache hit"), -1)
+        self.assertNotEqual(result.stdout.find("12 remote cache hit"), -1)
 
     def tearDown(self):
         self.bazels3cache.kill()
