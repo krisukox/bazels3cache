@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
@@ -22,28 +22,26 @@ type App struct {
 	bucketName string
 }
 
-func NewApp(bucketName string) App {
+func NewApp(bucketName string, s3url string) App {
 	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	cfg, err := config.LoadDefaultConfig(
-		ctxTimeout,
-		config.WithEndpointResolverWithOptions(
+	var loadOptions []func(*config.LoadOptions) error
+
+	if s3url != "" {
+		loadOptions = append(loadOptions, config.WithEndpointResolverWithOptions(
 			aws.EndpointResolverWithOptionsFunc(
 				func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
 					return aws.Endpoint{
-						URL:               "http://localhost:9444/s3",
+						URL:               s3url,
 						Source:            aws.EndpointSourceCustom,
 						SigningRegion:     "us-east-1",
 						HostnameImmutable: true,
 					}, nil
-				})),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			"AKIAIOSFODNN7EXAMPLE",
-			"wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-			"",
-		)),
-	)
+				})))
+	}
+
+	cfg, err := config.LoadDefaultConfig(ctxTimeout, loadOptions...)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -77,7 +75,7 @@ func (a *App) All(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			var nsk *types.NoSuchKey
 			if errors.As(err, &nsk) {
-				fmt.Println(">>NO SUCH KEY")
+				fmt.Println("ERRO\tNO SUCH KEY")
 			} else {
 				fmt.Printf("%+v\n", err)
 			}
@@ -118,11 +116,22 @@ func (a *App) All(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	bucketName := "bazel"
-	app := NewApp(bucketName)
-	if ok, err := app.CheckBucket(bucketName); !ok {
-		fmt.Printf("ERROR\tYou don't have access to the bucket: %v", err)
+	s3url := flag.String("s3url", "", "s3 url used for testing")
+	bucketName := flag.String("bucket", "", "s3 bucket name")
+	flag.Parse()
+
+	if *bucketName == "" {
+		fmt.Printf("ERROR\tPlease specify S3 bucket name\n")
 		return
+	}
+
+	app := NewApp(*bucketName, *s3url)
+
+	if *s3url == "" {
+		if ok, err := app.CheckBucket(*bucketName); !ok {
+			fmt.Printf("ERROR\tYou don't have access to the bucket: %v\n", err)
+			return
+		}
 	}
 
 	routerServeMux := http.NewServeMux()

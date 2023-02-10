@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+
+  s3ninja:
+    image: scireum/s3-ninja:8.1.1
+    logging:
+      driver: none
+
+  integration:
+    build:
+      context: .
+      dockerfile: integration_test/Dockerfile.test
+    environment:
+      s3_host: s3ninja:9000
+      WAIT_HOSTS: s3ninja:9000
+    depends_on:
+      - s3ninja

@@ -1,0 +1,2 @@
+integration_test/Dockerfile.test
+integration_test/workspace/bazel-*
