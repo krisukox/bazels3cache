@@ -3,11 +3,11 @@ name: tests
 on: push
 
 jobs:
-  Run integration test:
+  integration_test:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
-      - name: List files in the repository
+      - name: Run integration test
         run: |
           docker-compose -f docker-compose.test.yaml up --build --force-recreate --exit-code-from integration
