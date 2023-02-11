@@ -16,6 +16,8 @@ jobs:
         run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
       - name: Build bazels3cache
         run: go build -o ./bazels3cache app/main.go
+      - name: Copy aws credentials
+        run: cp -r integration_test/.aws ~/
       - name: Test
         run: |
           export s3_host=localhost:9444
