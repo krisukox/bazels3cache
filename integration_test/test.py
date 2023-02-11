@@ -58,7 +58,17 @@ class TestBazelCache(unittest.TestCase):
     def test(self):
         self.start_bazels3cache()
 
-        self.bazel_test()
+        subprocess.run(
+            [
+                "bazel",
+                "test",
+                "//...",
+                "--remote_cache=http://localhost:7777",
+                "--remote_upload_local_results=true",
+            ],
+            check=True,
+            cwd=self.test_workspace,
+        )
         self.bazel_clean()
         stdout = self.bazel_test()
 
