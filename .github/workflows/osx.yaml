@@ -1,6 +1,9 @@
 name: osx
 
-on: push
+on:
+  push:
+    branches:
+      - master
 
 jobs:
   integration_test:
