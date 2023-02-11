@@ -15,10 +15,7 @@ RUN chmod +x /wait
 
 COPY integration_test/workspace /integration_test/workspace
 COPY integration_test/.aws/config /integration_test/.aws/config
-RUN mkdir ~/.aws/ \
-    && cp /integration_test/.aws/config ~/.aws/config \
-    && mv /integration_test/workspace/.lib_test.go /integration_test/workspace/lib_test.go \
-    && mv /integration_test/workspace/.lib.go /integration_test/workspace/lib.go
+RUN mkdir ~/.aws/ && cp /integration_test/.aws/config ~/.aws/config
 
 # Download golang dependencies
 COPY go.* /src/

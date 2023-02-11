@@ -2,9 +2,9 @@ import subprocess, os, unittest
 
 
 class TestBazelCache(unittest.TestCase):
-    def setUp(self):
-        s3_host = os.getenv("s3_host", "http://localhost:9444")
-        self.bazels3cache = subprocess.Popen(
+    def test(self):
+        s3_host = os.getenv("s3_host", "localhost:9444")
+        self.bazels3cache = subprocess.run(
             [
                 "/bazels3cache",
                 "--s3url",
@@ -12,10 +12,9 @@ class TestBazelCache(unittest.TestCase):
                 "--bucket",
                 "bazel",
             ],
-            stdout=subprocess.DEVNULL,
+            check=True,
         )
 
-    def test(self):
         bazel_test = [
             "bazel",
             "test",
@@ -38,8 +37,7 @@ class TestBazelCache(unittest.TestCase):
         print(result.stdout)
         self.assertNotEqual(result.stdout.find("12 remote cache hit"), -1)
 
-    def tearDown(self):
-        self.bazels3cache.kill()
+        self.bazels3cache = subprocess.run(["/bazels3cache", "--stop"], check=True)
 
 
 if __name__ == "__main__":

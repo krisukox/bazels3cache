@@ -1,0 +1,22 @@
+name: osx
+
+on: push
+
+jobs:
+  integration_test:
+    runs-on: macos-12
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Install Bazel
+        run: brew install bazel 
+      - name: Run s3ninja
+        run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
+      - name: Build & run bazels3cache
+        run: |
+          go build -o ./bazels3cache app/main.go
+          ./bazels3cache --bucket bazel --s3url http://localhost:9444/s3
+      - name: Test
+        run: |
+          cd integration_test/workspace
+          bazel test //... --remote_cache=http://localhost:7777 --remote_upload_local_results=true
