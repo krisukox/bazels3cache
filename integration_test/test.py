@@ -1,43 +1,71 @@
 import subprocess, os, unittest
 
 
+def print_cmd(cmd):
+    print("+ " + " ".join(cmd))
+    return cmd
+
+
 class TestBazelCache(unittest.TestCase):
-    def test(self):
-        s3_host = os.getenv("s3_host", "localhost:9444")
-        self.bazels3cache = subprocess.run(
+    def setUp(self):
+        self.s3_host = os.getenv("s3_host", "localhost:9444")
+        self.test_workspace = os.getenv("test_workspace", "workspace")
+        self.bazels3cache = os.getenv("bazels3cache", "/bazels3cache")
+
+    def start_bazels3cache(self):
+        cmd = print_cmd(
             [
-                "/bazels3cache",
+                self.bazels3cache,
                 "--s3url",
-                "http://{0}/s3".format(s3_host),
+                "http://{0}/s3".format(self.s3_host),
                 "--bucket",
                 "bazel",
-            ],
-            check=True,
+            ]
         )
+        subprocess.run(cmd, check=True)
 
-        bazel_test = [
-            "bazel",
-            "test",
-            "//...",
-            "--remote_cache=http://localhost:7777",
-            "--remote_upload_local_results=true",
-        ]
-        bazel_clean = ["bazel", "clean"]
-        test_workspace = "workspace"
+    def stop_bazels3cache(self):
+        cmd = print_cmd([self.bazels3cache, "--stop"])
+        subprocess.run(cmd, check=True)
 
-        subprocess.run(bazel_test, cwd=test_workspace)
-        subprocess.run(bazel_clean, cwd=test_workspace)
+    def bazel_test(self):
+        cmd = print_cmd(
+            [
+                "bazel",
+                "test",
+                "//...",
+                "--remote_cache=http://localhost:7777",
+                "--remote_upload_local_results=true",
+            ]
+        )
         result = subprocess.run(
-            bazel_test,
+            cmd,
+            check=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            cwd=test_workspace,
+            cwd=self.test_workspace,
         )
         print(result.stdout)
-        self.assertNotEqual(result.stdout.find("12 remote cache hit"), -1)
+        return result.stdout
 
-        self.bazels3cache = subprocess.run(["/bazels3cache", "--stop"], check=True)
+    def bazel_clean(self):
+        cmd = print_cmd(["bazel", "clean"])
+        result = subprocess.run(cmd, check=True, cwd=self.test_workspace)
+        print(result.stdout)
+        return result.stdout
+
+    def test(self):
+        self.start_bazels3cache()
+
+        self.bazel_test()
+        self.bazel_clean()
+        stdout = self.bazel_test()
+
+        self.assertNotEqual(stdout.find("12 remote cache hit"), -1)
+        self.assertTrue(os.path.isfile(os.path.expanduser("~/.bazels3cache.log")))
+
+        self.stop_bazels3cache()
 
 
 if __name__ == "__main__":

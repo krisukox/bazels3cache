@@ -55,7 +55,14 @@ func NewApp(bucketName string, s3url string) App {
 	}
 
 	return App{
-		s3client:   s3.NewFromConfig(cfg),
+		s3client: s3.NewFromConfig(cfg, func(o *s3.Options) {
+			cred, err := o.Credentials.Retrieve(context.TODO())
+			if err != nil {
+				fmt.Printf("Error with retriving credentials")
+			} else {
+				fmt.Printf("%+v\n", cred)
+			}
+		}),
 		bucketName: bucketName,
 	}
 }
@@ -177,11 +184,10 @@ func main() {
 	}
 
 	cntxt := &daemon.Context{
-		PidFileName: ".bazels3cache.pid",
+		PidFileName: filepath.Join(workDir, ".bazels3cache.pid"),
 		PidFilePerm: 0644,
-		LogFileName: ".bazels3cache.log",
+		LogFileName: filepath.Join(workDir, ".bazels3cache.log"),
 		LogFilePerm: 0640,
-		WorkDir:     workDir,
 		Umask:       027,
 		Args:        append(os.Args, "[bazels3cache-daemon]"),
 	}
