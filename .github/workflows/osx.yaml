@@ -14,10 +14,8 @@ jobs:
           colima start
       - name: Run s3ninja
         run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
-      - name: Build & run bazels3cache
-        run: |
-          go build -o ./bazels3cache app/main.go
-          ./bazels3cache --bucket bazel --s3url http://localhost:9444/s3
+      - name: Build bazels3cache
+        run: go build -o ./bazels3cache app/main.go
       - name: Test
         run: |
           export s3_host=localhost:9444
