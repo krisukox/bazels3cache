@@ -14,11 +14,9 @@ ADD https://github.com/ufoscout/docker-compose-wait/releases/download/2.9.0/wait
 RUN chmod +x /wait
 
 COPY integration_test/workspace /integration_test/workspace
-COPY integration_test/.aws/config /integration_test/.aws/config
-RUN mkdir ~/.aws/ \
-    && cp /integration_test/.aws/config ~/.aws/config \
-    && mv /integration_test/workspace/.lib_test.go /integration_test/workspace/lib_test.go \
-    && mv /integration_test/workspace/.lib.go /integration_test/workspace/lib.go
+COPY integration_test/.aws/* /integration_test/.aws/
+RUN cp -r /integration_test/.aws/ ~/ && \
+    cat ~/.aws/credentials
 
 # Download golang dependencies
 COPY go.* /src/
@@ -29,6 +27,9 @@ RUN go mod download
 COPY app/*.go /src/app/
 RUN go build -o /bazels3cache ./app
 
+ENV test_workspace /integration_test/workspace
+ENV bazels3cache /bazels3cache
+
 COPY integration_test/test.py /integration_test/
 WORKDIR /integration_test
-CMD /wait && python3 test.py
+CMD /wait && python3 -u test.py

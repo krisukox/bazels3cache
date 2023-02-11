@@ -1,0 +1,30 @@
+name: osx
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  integration_test:
+    runs-on: macos-12
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Install Docker
+        run: |
+          brew install docker colima
+          colima start
+      - name: Run s3ninja
+        run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
+      - name: Build bazels3cache
+        run: go build -o ./bazels3cache app/main.go
+      - name: Copy aws credentials
+        run: cp -r integration_test/.aws ~/
+      - name: Test
+        env:
+          s3_host: localhost:9444
+          test_workspace: integration_test/workspace
+          bazels3cache: ./bazels3cache
+        run: |
+          python3 -u ./integration_test/test.py

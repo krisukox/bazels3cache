@@ -9,7 +9,7 @@ services:
   integration:
     build:
       context: .
-      dockerfile: integration_test/Dockerfile.test
+      dockerfile: integration_test/Dockerfile
     environment:
       s3_host: s3ninja:9000
       WAIT_HOSTS: s3ninja:9000

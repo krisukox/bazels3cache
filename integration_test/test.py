@@ -1,45 +1,76 @@
-import subprocess, os, unittest
+import subprocess, os, unittest, time
+
+
+def print_cmd(cmd):
+    print("+ " + " ".join(cmd))
+    return cmd
 
 
 class TestBazelCache(unittest.TestCase):
     def setUp(self):
-        s3_host = os.getenv("s3_host", "http://localhost:9444")
-        self.bazels3cache = subprocess.Popen(
-            [
-                "/bazels3cache",
-                "--s3url",
-                "http://{0}/s3".format(s3_host),
-                "--bucket",
-                "bazel",
-            ],
-            stdout=subprocess.DEVNULL,
-        )
+        self.s3_host = os.getenv("s3_host", "localhost:9444")
+        self.test_workspace = os.getenv("test_workspace", "workspace")
+        self.bazels3cache = os.getenv("bazels3cache", "/bazels3cache")
 
-    def test(self):
-        bazel_test = [
-            "bazel",
-            "test",
-            "//...",
-            "--remote_cache=http://localhost:7777",
-            "--remote_upload_local_results=true",
-        ]
-        bazel_clean = ["bazel", "clean"]
-        test_workspace = "workspace"
-
-        subprocess.run(bazel_test, cwd=test_workspace)
-        subprocess.run(bazel_clean, cwd=test_workspace)
-        result = subprocess.run(
-            bazel_test,
+    def run_cmd(self, cmd, cwd=None):
+        stdout = ""
+        process = subprocess.Popen(
+            print_cmd(cmd),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            text=True,
-            cwd=test_workspace,
+            universal_newlines=True,
+            cwd=cwd,
         )
-        print(result.stdout)
-        self.assertNotEqual(result.stdout.find("12 remote cache hit"), -1)
+        while True:
+            stdout_line = process.stdout.readline()
+            if stdout_line == "" and process.poll() is not None:
+                break
+            if stdout_line:
+                stdout += stdout_line
+                print(stdout_line.strip())
+        self.assertEquals(process.returncode, 0)
+        return stdout
 
-    def tearDown(self):
-        self.bazels3cache.kill()
+    def start_bazels3cache(self):
+        self.run_cmd(
+            [
+                self.bazels3cache,
+                "--s3url",
+                "http://{0}/s3".format(self.s3_host),
+                "--bucket",
+                "bazel",
+            ]
+        )
+
+    def stop_bazels3cache(self):
+        self.run_cmd([self.bazels3cache, "--stop"])
+
+    def bazel_test(self):
+        return self.run_cmd(
+            [
+                "bazel",
+                "test",
+                "//...",
+                "--remote_cache=http://localhost:7777",
+                "--remote_upload_local_results=true",
+            ],
+            cwd=self.test_workspace,
+        )
+
+    def bazel_clean(self):
+        return self.run_cmd(["bazel", "clean"], cwd=self.test_workspace)
+
+    def test(self):
+        self.start_bazels3cache()
+
+        self.bazel_test()
+        self.bazel_clean()
+        stdout = self.bazel_test()
+
+        self.assertNotEqual(stdout.find("12 remote cache hit"), -1)
+        self.assertTrue(os.path.isfile(os.path.expanduser("~/.bazels3cache.log")))
+
+        self.stop_bazels3cache()
 
 
 if __name__ == "__main__":
