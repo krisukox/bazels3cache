@@ -1,4 +1,4 @@
-import subprocess, os, unittest
+import subprocess, os, unittest, time
 
 
 def print_cmd(cmd):
@@ -12,8 +12,27 @@ class TestBazelCache(unittest.TestCase):
         self.test_workspace = os.getenv("test_workspace", "workspace")
         self.bazels3cache = os.getenv("bazels3cache", "/bazels3cache")
 
+    def run_cmd(self, cmd, cwd=None):
+        stdout = ""
+        process = subprocess.Popen(
+            print_cmd(cmd),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            cwd=cwd,
+        )
+        while True:
+            stdout_line = process.stdout.readline()
+            if stdout_line == "" and process.poll() is not None:
+                break
+            if stdout_line:
+                stdout += stdout_line
+                print(stdout_line.strip())
+        self.assertEquals(process.returncode, 0)
+        return stdout
+
     def start_bazels3cache(self):
-        cmd = print_cmd(
+        self.run_cmd(
             [
                 self.bazels3cache,
                 "--s3url",
@@ -22,43 +41,12 @@ class TestBazelCache(unittest.TestCase):
                 "bazel",
             ]
         )
-        subprocess.run(cmd, check=True)
 
     def stop_bazels3cache(self):
-        cmd = print_cmd([self.bazels3cache, "--stop"])
-        subprocess.run(cmd, check=True)
+        self.run_cmd([self.bazels3cache, "--stop"])
 
     def bazel_test(self):
-        cmd = print_cmd(
-            [
-                "bazel",
-                "test",
-                "//...",
-                "--remote_cache=http://localhost:7777",
-                "--remote_upload_local_results=true",
-            ]
-        )
-        result = subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=self.test_workspace,
-        )
-        print(result.stdout)
-        return result.stdout
-
-    def bazel_clean(self):
-        cmd = print_cmd(["bazel", "clean"])
-        result = subprocess.run(cmd, check=True, cwd=self.test_workspace)
-        print(result.stdout)
-        return result.stdout
-
-    def test(self):
-        self.start_bazels3cache()
-
-        subprocess.run(
+        return self.run_cmd(
             [
                 "bazel",
                 "test",
@@ -66,9 +54,16 @@ class TestBazelCache(unittest.TestCase):
                 "--remote_cache=http://localhost:7777",
                 "--remote_upload_local_results=true",
             ],
-            check=True,
             cwd=self.test_workspace,
         )
+
+    def bazel_clean(self):
+        return self.run_cmd(["bazel", "clean"], cwd=self.test_workspace)
+
+    def test(self):
+        self.start_bazels3cache()
+
+        self.bazel_test()
         self.bazel_clean()
         stdout = self.bazel_test()
 

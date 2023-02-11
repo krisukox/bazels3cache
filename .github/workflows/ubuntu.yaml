@@ -1,13 +1,13 @@
-# name: ubuntu
+name: ubuntu
 
-# on: push
+on: push
 
-# jobs:
-#   integration_test:
-#     runs-on: ubuntu-22.04
-#     steps:
-#       - name: Check out repository code
-#         uses: actions/checkout@v3
-#       - name: Run integration test
-#         run: |
-#           docker-compose -f docker-compose.test.yaml up --build --force-recreate --exit-code-from integration
+jobs:
+  integration_test:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Run integration test
+        run: |
+          docker-compose -f docker-compose.test.yaml up --build --force-recreate --exit-code-from integration
