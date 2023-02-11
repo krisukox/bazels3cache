@@ -8,6 +8,8 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
+      - name: Install Docker
+        run: brew install docker
       - name: Run s3ninja
         run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
       - name: Build & run bazels3cache
