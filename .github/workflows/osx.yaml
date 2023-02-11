@@ -19,8 +19,9 @@ jobs:
       - name: Copy aws credentials
         run: cp -r integration_test/.aws ~/
       - name: Test
+        env:
+          s3_host: localhost:9444
+          test_workspace: integration_test/workspace
+          bazels3cache: ./bazels3cache
         run: |
-          export s3_host=localhost:9444
-          export test_workspace=integration_test/workspace
-          export bazels3cache=./bazels3cache
           python3 -u ./integration_test/test.py
