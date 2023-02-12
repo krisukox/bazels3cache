@@ -19,17 +19,16 @@ RUN cp -r /integration_test/.aws/ ~/ && \
     cat ~/.aws/credentials
 
 # Download golang dependencies
-COPY go.* /src/
+COPY go.* Makefile /src/
 WORKDIR /src
 RUN go mod download
 
 # Build bazels3cache app
 COPY app/*.go /src/app/
-RUN go build -o /bazels3cache ./app
+RUN make build-debug
 
 ENV test_workspace /integration_test/workspace
-ENV bazels3cache /bazels3cache
+ENV bazels3cache ./bazels3cache
 
 COPY integration_test/test.py /integration_test/
-WORKDIR /integration_test
-CMD /wait && python3 -u test.py
+CMD /wait && python3 -u /integration_test/test.py

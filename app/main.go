@@ -7,80 +7,63 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"os"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"strconv"
 	"syscall"
-	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 
 	"github.com/sevlyar/go-daemon"
 )
 
+const (
+	defaultPort     = 7777
+	sigSuccess      = syscall.SIGUSR1
+	sigError        = syscall.SIGUSR2
+	shutdownUrlTmpl = "http://localhost:%d/shutdown"
+	rootPidEnv      = "ROOT_PID"
+)
+
 type App struct {
 	s3client   *s3.Client
 	bucketName string
+	infoLog    *log.Logger
+	errorLog   *log.Logger
 }
 
-func NewApp(bucketName string, s3url string) App {
-	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-
-	var loadOptions []func(*config.LoadOptions) error
-
-	if s3url != "" {
-		loadOptions = append(loadOptions, config.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(
-				func(_, _ string, _ ...interface{}) (aws.Endpoint, error) {
-					return aws.Endpoint{
-						URL:               s3url,
-						Source:            aws.EndpointSourceCustom,
-						SigningRegion:     "us-east-1",
-						HostnameImmutable: true,
-					}, nil
-				})))
-	}
-
-	cfg, err := config.LoadDefaultConfig(ctxTimeout, loadOptions...)
+func createAndCheckS3Client(bucketName, s3url string) (*s3.Client, error) {
+	cfg, err := loadConfig(s3url)
 	if err != nil {
-		panic(err.Error())
+		return nil, fmt.Errorf("cannot load config: %v", err)
 	}
 
-	return App{
-		s3client: s3.NewFromConfig(cfg, func(o *s3.Options) {
-			cred, err := o.Credentials.Retrieve(context.TODO())
-			if err != nil {
-				fmt.Printf("Error with retriving credentials")
-			} else {
-				fmt.Printf("%+v\n", cred)
-			}
-		}),
-		bucketName: bucketName,
+	s3Client, err := createS3Client(cfg, bucketName)
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to the bucket: %v", err)
 	}
+	return s3Client, nil
 }
 
-func (a *App) CheckBucket(bucketName string) (bool, error) {
-	if _, err := a.s3client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
-		Bucket: aws.String(bucketName),
-	}); err != nil {
-		return false, err
-	}
-	return true, nil
+func (a *App) methodNotAllowed(w http.ResponseWriter, method, s3key string) {
+	a.infoLog.Printf("%s: %s", method, s3key)
+	a.errorLog.Printf("%s not implemented yet", method)
+	w.Header().Set("Allow", http.MethodGet+", "+http.MethodPut)
+	w.WriteHeader(http.StatusNotFound)
 }
 
-func (a *App) All(w http.ResponseWriter, r *http.Request) {
+func (a *App) all(w http.ResponseWriter, r *http.Request) {
 	s3key := r.URL.Path[1:]
 
 	if r.Method == http.MethodGet {
-		fmt.Printf("GET: %+v\n", s3key)
+		a.infoLog.Printf("GET: %s", s3key)
 
 		result, err := a.s3client.GetObject(context.Background(), &s3.GetObjectInput{
 			Bucket: aws.String(a.bucketName),
@@ -90,9 +73,9 @@ func (a *App) All(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			var nsk *types.NoSuchKey
 			if errors.As(err, &nsk) {
-				fmt.Println("ERRO\tNO SUCH KEY")
+				a.errorLog.Printf("No such key: %s", s3key)
 			} else {
-				fmt.Printf("%+v\n", err)
+				a.errorLog.Printf("S3 error: %v", err)
 			}
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -100,128 +83,193 @@ func (a *App) All(w http.ResponseWriter, r *http.Request) {
 		defer result.Body.Close()
 		buf, err := io.ReadAll(result.Body)
 		if err != nil {
+			a.errorLog.Printf("Internal Server Error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		w.Write(buf)
 	} else if r.Method == http.MethodPut {
-		fmt.Printf("PUT: %+v\n", s3key)
+		a.infoLog.Printf("PUT: %s", s3key)
+
 		buf, err := io.ReadAll(r.Body)
 		if err != nil {
+			a.errorLog.Printf("Internal Server Error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		_, err = a.s3client.PutObject(context.TODO(), &s3.PutObjectInput{
+		if _, err = a.s3client.PutObject(context.TODO(), &s3.PutObjectInput{
 			Bucket: aws.String(a.bucketName),
 			Key:    aws.String(s3key),
 			Body:   bytes.NewReader(buf),
-		})
-		if err != nil {
-			log.Printf("Couldn't upload %v : %v\n", s3key, err)
+		}); err != nil {
+			a.errorLog.Printf("Couldn't upload %v : %v", s3key, err)
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
 	} else if r.Method == http.MethodHead {
-		fmt.Printf("HEAD: %+v\n", s3key)
-		panic("HEAD NOT IMPLEMENTED YET")
+		a.methodNotAllowed(w, http.MethodHead, s3key)
 	} else if r.Method == http.MethodDelete {
-		fmt.Printf("DELETE: %+v\n", s3key)
-		panic("DELETE NOT IMPLEMENTED YET")
+		a.methodNotAllowed(w, http.MethodDelete, s3key)
 	}
 }
 
-func (a *App) Shutdown(w http.ResponseWriter, r *http.Request) {
+func (a *App) shutdown(w http.ResponseWriter, r *http.Request) {
 	log.Println("Shutting down")
 	fmt.Fprintf(w, "Shutting down")
 	go os.Exit(0)
 }
 
-func SendShutdown(shutdownUrl string) error {
-	resp, err := http.Get(shutdownUrl)
+func sendShutdown(port int) error {
+	resp, err := http.Get(fmt.Sprintf(shutdownUrlTmpl, port))
 	if err != nil {
 		if errors.Is(err, syscall.ECONNREFUSED) {
-			fmt.Printf("Server is not running\n")
-			return err
+			return fmt.Errorf("server is not running")
 		}
+		return fmt.Errorf("unexpected error: %v", err)
 	}
-	response, err := ioutil.ReadAll(resp.Body)
+	defer resp.Body.Close()
+
+	response, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return fmt.Errorf("internal application error: %v", err)
 	}
 	fmt.Println(string(response))
+
 	return nil
 }
 
-func main() {
-	const defaultPort = 7777
+func createDaemonContext() *daemon.Context {
+	usr, err := user.Current()
+	workDir := ""
+	if err == nil {
+		workDir = usr.HomeDir
+	}
 
-	s3url := flag.String("s3url", "", "s3 url used for testing")
+	return &daemon.Context{
+		PidFileName: filepath.Join(workDir, ".bazels3cache.pid"),
+		PidFilePerm: 0644,
+		LogFileName: filepath.Join(workDir, ".bazels3cache.log"),
+		LogFilePerm: 0640,
+		Umask:       027,
+		Env:         append(os.Environ(), rootPidEnv+"="+strconv.Itoa(os.Getpid())),
+		Args:        append(os.Args, "[bazels3cache-daemon]"),
+	}
+}
+
+func rootProcess(port int, logFile string) error {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, sigSuccess, sigError)
+
+	switch sig := <-sigs; sig {
+	case sigSuccess:
+		executablePath, err := os.Executable()
+		if err != nil {
+			executablePath = ""
+		}
+		executableName := filepath.Base(executablePath)
+
+		portSwitch := ""
+		if port != defaultPort {
+			portSwitch = " --port " + strconv.Itoa(port)
+		}
+
+		fmt.Printf(
+			"Server `%[1]s` is running, to stop it run `%[1]s --stop%[2]s` or `curl %[3]s`\n",
+			executableName, portSwitch, fmt.Sprintf(shutdownUrlTmpl, port),
+		)
+		fmt.Printf("Logging to %s\n", logFile)
+		return nil
+	case sigError:
+		return fmt.Errorf("failed to initialize application")
+	}
+	return fmt.Errorf("failed to initialize application")
+}
+
+func daemonProcess(bucketName, s3url string, port int, infoLog, errorLog *log.Logger) error {
+	rootPid, err := strconv.Atoi(os.Getenv(rootPidEnv))
+	if err != nil {
+		return fmt.Errorf("internal application error: %v", err)
+	}
+
+	addr := ":" + strconv.Itoa(port)
+
+	ln, err := net.Listen("tcp", addr)
+	if err != nil {
+		sendError(rootPid)
+		return fmt.Errorf("can't open port %d: %v", port, err)
+	}
+
+	s3Client, err := createAndCheckS3Client(bucketName, s3url)
+	if err != nil {
+		return err
+	}
+
+	app := &App{
+		s3client:   s3Client,
+		bucketName: bucketName,
+		infoLog:    infoLog,
+		errorLog:   errorLog,
+	}
+
+	routerServeMux := http.NewServeMux()
+	routerServeMux.HandleFunc("/", app.all)
+	routerServeMux.HandleFunc("/shutdown", app.shutdown)
+
+	server := &http.Server{Addr: addr, Handler: routerServeMux, ErrorLog: errorLog}
+
+	sendSuccess(rootPid)
+
+	return server.Serve(ln)
+}
+
+func sendSuccess(rootPid int) {
+	syscall.Kill(rootPid, sigSuccess)
+}
+
+func sendError(rootPid int) {
+	syscall.Kill(rootPid, sigError)
+}
+
+func main() {
 	bucketName := flag.String("bucket", "", "s3 bucket name")
+	s3url := flag.String("s3url", "", "s3 url used for testing")
 	port := flag.Int("port", defaultPort, "s3 bucket name")
 	stop := flag.Bool("stop", false, "s3 bucket name")
 	flag.Parse()
 
-	portString := strconv.Itoa(*port)
-	shutdownUrl := fmt.Sprintf("http://localhost:%s/shutdown", portString)
-
 	if *stop {
-		if SendShutdown(shutdownUrl) != nil {
+		if err := sendShutdown(*port); err != nil {
+			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
 		return
 	}
 
 	if *bucketName == "" {
-		fmt.Printf("ERROR\tPlease specify S3 bucket name: -bucket string\n")
+		fmt.Printf("Error: Please specify S3 bucket name: --bucket string\n")
 		return
 	}
 
-	usr, err := user.Current()
-	workDir := ""
-	if err == nil {
-		workDir = usr.HomeDir
-		fmt.Printf("WORKDIR: %s\n", workDir)
-	}
-
-	cntxt := &daemon.Context{
-		PidFileName: filepath.Join(workDir, ".bazels3cache.pid"),
-		PidFilePerm: 0644,
-		LogFileName: filepath.Join(workDir, ".bazels3cache.log"),
-		LogFilePerm: 0640,
-		Umask:       027,
-		Args:        append(os.Args, "[bazels3cache-daemon]"),
-	}
+	cntxt := createDaemonContext()
 
 	d, err := cntxt.Reborn()
 	if err != nil {
-		log.Fatal("Unable to run: ", err)
+		log.Fatal("Internal application error: ", err)
 	}
 	if d != nil {
-		executablePath, _ := os.Executable()
-		portSwitch := ""
-		if *port != defaultPort {
-			portSwitch = " -port " + portString
+		if err := rootProcess(*port, cntxt.LogFileName); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
 		}
-		fmt.Printf("Server `%[1]s` is running, to stop it run `curl %[2]s` or `%[1]s -stop%[3]s`\n", filepath.Base(executablePath), shutdownUrl, portSwitch)
-		fmt.Printf("Logging to %s/.bazels3cache.log\n", workDir)
 		return
 	}
 
 	defer cntxt.Release()
 
-	app := NewApp(*bucketName, *s3url)
+	infoLog := log.New(os.Stdout, "INFO\t", log.Ltime)
+	errorLog := log.New(os.Stderr, "ERROR\t", log.Ltime)
 
-	if *s3url == "" {
-		if ok, err := app.CheckBucket(*bucketName); !ok {
-			fmt.Printf("ERROR\tYou don't have access to the bucket: %v\n", err)
-			return
-		}
+	if err := daemonProcess(*bucketName, *s3url, *port, infoLog, errorLog); err != nil {
+		errorLog.Fatal(err)
 	}
-
-	routerServeMux := http.NewServeMux()
-	routerServeMux.HandleFunc("/", app.All)
-	routerServeMux.HandleFunc("/shutdown", app.Shutdown)
-	err = http.ListenAndServe(":"+portString, routerServeMux)
-
-	panic(err)
 }
