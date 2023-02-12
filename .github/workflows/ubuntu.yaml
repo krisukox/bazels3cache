@@ -4,6 +4,7 @@ on: push
 
 jobs:
   integration_test:
+    name: Run integration test
     runs-on: ubuntu-22.04
     steps:
       - name: Check out repository code
@@ -11,3 +12,13 @@ jobs:
       - name: Run integration test
         run: |
           docker-compose -f docker-compose.test.yaml up --build --force-recreate --exit-code-from integration
+
+  build_release:
+    name: Build release binary
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Run integration test
+        run: |
+          make build

@@ -1,8 +1,8 @@
-import subprocess, os, unittest, time
+import subprocess, os, unittest
 
 
 def print_cmd(cmd):
-    print("+ " + " ".join(cmd))
+    print("\n+ " + " ".join(cmd))
     return cmd
 
 
@@ -28,7 +28,8 @@ class TestBazelCache(unittest.TestCase):
             if stdout_line:
                 stdout += stdout_line
                 print(stdout_line.strip())
-        self.assertEquals(process.returncode, 0)
+        process.communicate()
+        self.assertEqual(process.returncode, 0)
         return stdout
 
     def start_bazels3cache(self):
