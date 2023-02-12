@@ -21,7 +21,7 @@ jobs:
       - name: Copy aws credentials
         run: cp -r integration_test/.aws ~/
       - name: Build bazels3cache
-        run: go build -tags debug -o ./bazels3cache app/main.go
+        run: make build-debug
       - name: Test
         env:
           s3_host: localhost:9444
