@@ -19,13 +19,13 @@ jobs:
       - name: Run s3ninja
         run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
       - name: Copy aws credentials
-        run: cp -r integration_test/.aws ~/
+        run: cp -r test/.aws ~/
       - name: Build bazels3cache
         run: make build-debug
       - name: Test
         env:
-          s3_host: localhost:9444
-          test_workspace: integration_test/workspace
-          bazels3cache: ./bazels3cache
+          S3_HOST: localhost:9444
+          TEST_WORKSPACE: test/workspace
+          BAZELS3CACHE: ./bazels3cache
         run: |
-          python3 -u ./integration_test/test.py
+          python3 -u ./test/test.py TestBazelCache.test_integration

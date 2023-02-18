@@ -1,3 +1,7 @@
 .vscode/
+.local/
+
 bazel-*
 bazels3cache
+bazel/
+results/

@@ -1,0 +1,38 @@
+version: "3.8"
+services:
+
+  s3ninja:
+    image: scireum/s3-ninja:8.1.1
+    logging:
+      driver: none
+        # deploy:
+        #   resources:
+        #     limits:
+        #       cpus: '4'
+
+  integration:
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./bazel:/bazel
+      - ./results:/results
+      - ${BAZELS3CACHE_VOLUME:-/dum}
+    build:
+      context: .
+      dockerfile: test/Dockerfile
+    environment:
+      S3_HOST: s3ninja:9000
+      WAIT_HOSTS: s3ninja:9000
+      DEBUG: ${DEBUG}
+      TEST_TARGET: TestBazelCache.${BENCHMARK_TARGET}
+      BAZELS3CACHE: ${BAZELS3CACHE_BIN}
+      delay_ms: ${DELAY}
+      RESULTS_FILE: ${RESULTS_FILE}
+      BAZEL_TARGET: ${BAZEL_TARGET}
+      LOG_FILE: ${LOG_FILE}
+    depends_on:
+      - s3ninja
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '12'

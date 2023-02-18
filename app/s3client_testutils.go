@@ -24,7 +24,7 @@ func loadConfig(s3url string) (aws.Config, error) {
 					return aws.Endpoint{
 						URL:               s3url,
 						Source:            aws.EndpointSourceCustom,
-						SigningRegion:     "us-east-1",
+						SigningRegion:     "localhost",
 						HostnameImmutable: true,
 					}, nil
 				})))
