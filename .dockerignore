@@ -1,2 +1,3 @@
-integration_test/Dockerfile
-integration_test/workspace/bazel-*
+test/Dockerfile
+test/workspace/bazel-*
+bazel/

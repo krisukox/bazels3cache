@@ -9,9 +9,11 @@ services:
   integration:
     build:
       context: .
-      dockerfile: integration_test/Dockerfile
+      dockerfile: test/Dockerfile
     environment:
-      s3_host: s3ninja:9000
+      S3_HOST: s3ninja:9000
       WAIT_HOSTS: s3ninja:9000
+      DEBUG: ${DEBUG}
+      TEST_TARGET: TestBazelCache.test_integration
     depends_on:
       - s3ninja
