@@ -28,4 +28,5 @@ jobs:
           TEST_WORKSPACE: test/workspace
           BAZELS3CACHE: ./bazels3cache
         run: |
+          pip3 install requests
           python3 -u ./test/test.py TestBazelCache.test_integration
