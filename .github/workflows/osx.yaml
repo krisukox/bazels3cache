@@ -10,18 +10,29 @@ jobs:
     name: Run integration test
     runs-on: macos-12
     steps:
+      - name: Set up toolchain
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.20
+        id: go
+
       - name: Check out repository code
         uses: actions/checkout@v3
+
       - name: Install Docker
         run: |
           brew install docker colima
           colima start
+
       - name: Run s3ninja
         run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
+
       - name: Copy aws credentials
         run: cp -r test/.aws ~/
+
       - name: Build bazels3cache
         run: make build-debug
+
       - name: Test
         env:
           S3_HOST: localhost:9444
