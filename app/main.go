@@ -100,7 +100,7 @@ func listenOnAny(avoidPort int) (net.Listener, int, error) {
 			if port == avoidPort {
 				continue
 			}
-			ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(port))
+			ln, err := net.Listen("tcp", ":"+strconv.Itoa(port))
 			if err == nil {
 				return ln, port, nil
 			}
