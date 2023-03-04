@@ -8,15 +8,15 @@ on:
 jobs:
   release:
     name: Create release
-    strategy:
-      matrix:
-        target:
-          - { os: 'linux', arch: 'amd64' }
-          - { os: 'linux', arch: 'arm64' }
-          - { os: 'darwin', arch: 'amd64' }
-          - { os: 'darwin', arch: 'arm64' }
-          - { os: 'windows', arch: 'amd64' }
-    runs-on: ubuntu-latest
+    # strategy:
+    #   matrix:
+    #     target:
+    #       - { os: 'linux', arch: 'amd64' }
+    #       - { os: 'linux', arch: 'arm64' }
+    #       - { os: 'darwin', arch: 'amd64' }
+    #       - { os: 'darwin', arch: 'arm64' }
+    #       - { os: 'windows', arch: 'amd64' }
+    runs-on: ubuntu-22.04
     steps:
       - name: Set up toolchain
         uses: actions/setup-go@v2
@@ -33,5 +33,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }}
+          name: bazels3cache
           path: bazels3cache
