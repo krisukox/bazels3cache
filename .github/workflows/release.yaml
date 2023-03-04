@@ -1,0 +1,37 @@
+---
+name: Release
+
+on:
+  push:
+    tags: [ "*" ]
+
+jobs:
+  release:
+    name: Create release
+    strategy:
+      matrix:
+        target:
+          - { os: 'linux', arch: 'amd64' }
+          - { os: 'linux', arch: 'arm64' }
+          - { os: 'darwin', arch: 'amd64' }
+          - { os: 'darwin', arch: 'arm64' }
+          - { os: 'windows', arch: 'amd64' }
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up toolchain
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.20
+        id: go
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build binary
+        run: go build -o bazels3cache ./...
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }}
+          path: bazels3cache
