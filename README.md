@@ -19,9 +19,13 @@ bazels3cache -bucket bucket_name -port 5555
 
 ## Stop application
 
-`bazels3cache -stop`
+```
+bazels3cache -stop
+```
 or
-`curl http://localhost:7777/shutdown`
+```
+curl http://localhost:7777/shutdown
+```
 
 ## Installation (manual download)
 The pre-build binaries are available for the following platforms:
@@ -57,12 +61,12 @@ Integration test:
 - builds it again
 - checks if artifacts was downloaded from the remote cache.
 
-Integration test can be run with:
+Integration test can be run with:  
 `make run-integration-test`
 
 ### Benchmark
 
-Before running benchmark, please run submodule update to download the [Bazel](https://github.com/bazelbuild/bazel) repository:
+Before running benchmark, please run submodule update to download the [Bazel](https://github.com/bazelbuild/bazel) repository:  
 `git submodule update --init`
 
 Benchmark builds [Bazel](https://github.com/bazelbuild/bazel) project. It uses [netem](https://wiki.linuxfoundation.org/networking/netem) to simulate delay. Benchmark can be run with:  
