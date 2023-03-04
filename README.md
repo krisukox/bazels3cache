@@ -7,9 +7,15 @@ This application acts like a proxy between the [Bazel](https://bazel.build/) bui
 
 This command:
 
-`bazels3cache -bucket bucket_name`
+```
+bazels3cache -bucket bucket_name
+```
 
 starts the server on port 7777 in the background. If you want to use a different port, specify it with the `-port` switch.
+
+```
+bazels3cache -bucket bucket_name -port 5555
+```
 
 ## Stop application
 
