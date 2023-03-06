@@ -22,7 +22,10 @@ func loadConfig(_ string) (aws.Config, error) {
 func createS3Client(cfg aws.Config, bucketName string) (*s3.Client, error) {
 	s3Client := s3.NewFromConfig(cfg)
 
-	if _, err := s3Client.HeadBucket(context.TODO(), &s3.HeadBucketInput{
+	ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	if _, err := s3Client.HeadBucket(ctxTimeout, &s3.HeadBucketInput{
 		Bucket: aws.String(bucketName),
 	}); err != nil {
 		return nil, err

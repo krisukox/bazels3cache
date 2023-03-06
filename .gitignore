@@ -3,5 +3,4 @@
 
 bazel-*
 bazels3cache
-bazel/
-results/
+test/results/

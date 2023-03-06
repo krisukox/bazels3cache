@@ -89,7 +89,7 @@ func (d *Daemon) all(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		d.infoLog.Printf("GET: %s", s3key)
 
-		result, err := d.s3client.GetObject(context.Background(), &s3.GetObjectInput{
+		result, err := d.s3client.GetObject(r.Context(), &s3.GetObjectInput{
 			Bucket: aws.String(d.bucketName),
 			Key:    aws.String(s3key),
 		})
@@ -126,7 +126,7 @@ func (d *Daemon) all(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		go func() {
-			if _, err = d.s3client.PutObject(context.TODO(), &s3.PutObjectInput{
+			if _, err = d.s3client.PutObject(context.Background(), &s3.PutObjectInput{
 				Bucket: aws.String(d.bucketName),
 				Key:    aws.String(s3key),
 				Body:   bytes.NewReader(buf),

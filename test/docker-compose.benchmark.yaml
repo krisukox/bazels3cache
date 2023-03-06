@@ -14,11 +14,11 @@ services:
     cap_add:
       - NET_ADMIN
     volumes:
-      - ./bazel:/bazel
-      - ./results:/results
+      - ./test/bazel:/bazel
+      - ./test/results:/results
       - ${BAZELS3CACHE_VOLUME:-/dum}
     build:
-      context: .
+      context: ..
       dockerfile: test/Dockerfile
     environment:
       S3_HOST: s3ninja:9000
