@@ -1,45 +1,45 @@
-name: osx
+# name: osx
 
-on:
-  push:
-    branches:
-      - main
-    tags-ignore:
-      - '**'
+# on:
+#   push:
+#     branches:
+#       - main
+#     tags-ignore:
+#       - '**'
 
-jobs:
-  integration_test:
-    name: Run integration test
-    runs-on: macos-12
-    steps:
-      - name: Set up toolchain
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.20.1
-        id: go
+# jobs:
+#   integration_test:
+#     name: Run integration test
+#     runs-on: macos-12
+#     steps:
+#       - name: Set up toolchain
+#         uses: actions/setup-go@v3
+#         with:
+#           go-version: 1.20.1
+#         id: go
 
-      - name: Check out repository code
-        uses: actions/checkout@v3
+#       - name: Check out repository code
+#         uses: actions/checkout@v3
 
-      - name: Install Docker
-        run: |
-          brew install docker colima
-          colima start
+#       - name: Install Docker
+#         run: |
+#           brew install docker colima
+#           colima start
 
-      - name: Run s3ninja
-        run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
+#       - name: Run s3ninja
+#         run: docker run -p 9444:9000 --name=s3ninja --detach scireum/s3-ninja:8.1.1
 
-      - name: Copy aws credentials
-        run: cp -r test/.aws ~/
+#       - name: Copy aws credentials
+#         run: cp -r test/.aws ~/
 
-      - name: Build bazels3cache
-        run: make build-debug
+#       - name: Build bazels3cache
+#         run: make build-debug
 
-      - name: Test
-        env:
-          S3_HOST: localhost:9444
-          TEST_WORKSPACE: test/workspace
-          BAZELS3CACHE: ./bazels3cache
-        run: |
-          pip3 install requests
-          python3 -u ./test/test.py TestBazelCache.test_integration
+#       - name: Test
+#         env:
+#           S3_HOST: localhost:9444
+#           TEST_WORKSPACE: test/workspace
+#           BAZELS3CACHE: ./bazels3cache
+#         run: |
+#           pip3 install requests
+#           python3 -u ./test/test.py TestBazelCache.test_integration

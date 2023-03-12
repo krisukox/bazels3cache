@@ -1,4 +1,4 @@
-module github.com/krisukox/bazel-s3-cache
+module github.com/krisukox/bazels3cache
 
 go 1.20
 
