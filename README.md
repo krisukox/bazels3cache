@@ -1,7 +1,7 @@
 # bazels3cache
 
-This application acts like a proxy between the [Bazel](https://bazel.build/) build system and [AWS S3](https://aws.amazon.com/s3/). It supports the GET and PUT HTTP request methods.
-
+This application acts like a proxy between the [Bazel](https://bazel.build/) build system and [AWS S3](https://aws.amazon.com/s3/). It supports the GET and PUT HTTP request methods. The application logs to the `~/.bazels3cache.log` file.
+> **_NOTE:_** Currently only POSIX systems are supported.
 
 ## Start application
 
@@ -37,7 +37,6 @@ The pre-built binaries are available for the following platforms:
 - arm64 linux
 - amd64 darwin
 - arm64 darwin
-- amd64 windows
 
 #### Linux/Darwin
 
@@ -45,6 +44,7 @@ Choose your platform from the [releases page](https://github.com/krisukox/bazels
 
 ```
 sudo wget https://github.com/krisukox/bazels3cache/releases/latest/download/bazels3cache-linux-amd64 -O /usr/local/bin/bazels3cache
+chmod u+x /usr/local/bin/bazels3cache
 ```
 
 ## Installation using Go

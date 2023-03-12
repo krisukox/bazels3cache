@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - v*
+      - 'v*'
 
 permissions:
   contents: write
@@ -18,7 +18,6 @@ jobs:
           - { os: 'linux', arch: 'arm64' }
           - { os: 'darwin', arch: 'amd64' }
           - { os: 'darwin', arch: 'arm64' }
-          - { os: 'windows', arch: 'amd64' }
     runs-on: ubuntu-22.04
     steps:
       - name: Set up toolchain
@@ -31,12 +30,13 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Build binary
-        run: go build -o bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }} ./...
+        run: |
+          GOOS=${{ matrix.target.os }} GOARCH=${{ matrix.target.arch }} CGO_ENABLED=0 go build -o bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }} ./...
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          path: bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }}
+          path: bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }}*
 
   release:
     name: Create release
