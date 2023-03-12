@@ -1,52 +1,52 @@
-name: Release
+# name: Release
 
-on:
-  push:
-    tags:
-      - 'v*'
+# on:
+#   push:
+#     tags:
+#       - 'v*'
 
-permissions:
-  contents: write
+# permissions:
+#   contents: write
 
-jobs:
-  build:
-    name: Build
-    strategy:
-      matrix:
-        target:
-          - { os: 'linux', arch: 'amd64' }
-          - { os: 'linux', arch: 'arm64' }
-          - { os: 'darwin', arch: 'amd64' }
-          - { os: 'darwin', arch: 'arm64' }
-    runs-on: ubuntu-22.04
-    steps:
-      - name: Set up toolchain
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.20.1
-        id: go
+# jobs:
+#   build:
+#     name: Build
+#     strategy:
+#       matrix:
+#         target:
+#           - { os: 'linux', arch: 'amd64' }
+#           - { os: 'linux', arch: 'arm64' }
+#           - { os: 'darwin', arch: 'amd64' }
+#           - { os: 'darwin', arch: 'arm64' }
+#     runs-on: ubuntu-22.04
+#     steps:
+#       - name: Set up toolchain
+#         uses: actions/setup-go@v3
+#         with:
+#           go-version: 1.20.1
+#         id: go
 
-      - name: Check out code
-        uses: actions/checkout@v3
+#       - name: Check out code
+#         uses: actions/checkout@v3
 
-      - name: Build binary
-        run: |
-          GOOS=${{ matrix.target.os }} GOARCH=${{ matrix.target.arch }} CGO_ENABLED=0 go build -o bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }} ./...
+#       - name: Build binary
+#         run: |
+#           GOOS=${{ matrix.target.os }} GOARCH=${{ matrix.target.arch }} CGO_ENABLED=0 go build -o bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }} ./...
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v3
-        with:
-          path: bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }}*
+#       - name: Upload artifact
+#         uses: actions/upload-artifact@v3
+#         with:
+#           path: bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }}*
 
-  release:
-    name: Create release
-    runs-on: ubuntu-22.04
-    needs: [ build ]
-    steps:
-      - name: Download all binaries
-        uses: actions/download-artifact@v3
+#   release:
+#     name: Create release
+#     runs-on: ubuntu-22.04
+#     needs: [ build ]
+#     steps:
+#       - name: Download all binaries
+#         uses: actions/download-artifact@v3
 
-      - name: Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: ./artifact/*
+#       - name: Release
+#         uses: softprops/action-gh-release@v1
+#         with:
+#           files: ./artifact/*

@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"bytes"
@@ -17,6 +17,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 )
 
+const (
+	DefaultPort     = 7777
+	ShutdownUrlTmpl = "http://localhost:%d/shutdown"
+	RootPortEnv     = "ROOT_PORT"
+	SuccessMsg      = "success"
+)
+
 type Daemon struct {
 	s3client   *s3.Client
 	bucketName string
@@ -24,8 +31,8 @@ type Daemon struct {
 	errorLog   *log.Logger
 }
 
-func daemonProcess(bucketName, s3url string, port int, infoLog, errorLog *log.Logger) error {
-	rootPort, err := strconv.Atoi(os.Getenv(rootPortEnv))
+func DaemonProcess(bucketName, s3url string, port int, infoLog, errorLog *log.Logger) error {
+	rootPort, err := strconv.Atoi(os.Getenv(RootPortEnv))
 	if err != nil {
 		return fmt.Errorf("internal application error: %v", err)
 	}
@@ -160,7 +167,7 @@ func sendMsg(rootPort int, msg string) error {
 }
 
 func sendSuccess(rootPort int) error {
-	return sendMsg(rootPort, successMsg)
+	return sendMsg(rootPort, SuccessMsg)
 }
 
 func sendError(rootPort int, err error) error {
