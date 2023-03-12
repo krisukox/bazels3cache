@@ -1,8 +1,8 @@
 build:
-	CGO_ENABLED=0 go build -o bazels3cache ./...
+	CGO_ENABLED=0 go build -o bazels3cache .
 
 build-debug:
-	CGO_ENABLED=0 go build -tags debug -o bazels3cache ./...
+	CGO_ENABLED=0 go build -tags debug -o bazels3cache .
 
 start:
 	./bazels3cache --bucket bazel

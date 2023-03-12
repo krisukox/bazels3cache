@@ -29,6 +29,7 @@ RUN go mod download
 
 # Build bazels3cache app
 COPY app/*.go /src/app/
+COPY main.go /src/
 RUN make build-debug && cp ./bazels3cache /bin/bazels3cache
 
 ENV TEST_WORKSPACE /test/workspace

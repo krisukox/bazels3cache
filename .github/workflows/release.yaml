@@ -31,7 +31,7 @@ jobs:
 
       - name: Build binary
         run: |
-          GOOS=${{ matrix.target.os }} GOARCH=${{ matrix.target.arch }} CGO_ENABLED=0 go build -o bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }} ./...
+          GOOS=${{ matrix.target.os }} GOARCH=${{ matrix.target.arch }} CGO_ENABLED=0 go build -o bazels3cache-${{ matrix.target.os }}-${{ matrix.target.arch }} .
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
