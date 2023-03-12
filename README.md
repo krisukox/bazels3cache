@@ -44,7 +44,8 @@ Choose your platform from the [releases page](https://github.com/krisukox/bazels
 
 ```
 sudo wget https://github.com/krisukox/bazels3cache/releases/latest/download/bazels3cache-linux-amd64 -O /usr/local/bin/bazels3cache
-chmod u+x /usr/local/bin/bazels3cache
+sudo chmod +x /usr/local/bin/bazels3cache
+hash -r
 ```
 
 ## Installation using Go
