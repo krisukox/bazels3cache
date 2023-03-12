@@ -14,18 +14,12 @@ import (
 	"strconv"
 	"syscall"
 
+	"github.com/krisukox/bazels3cache/app"
 	"github.com/sevlyar/go-daemon"
 )
 
-const (
-	defaultPort     = 7777
-	shutdownUrlTmpl = "http://localhost:%d/shutdown"
-	rootPortEnv     = "ROOT_PORT"
-	successMsg      = "success"
-)
-
 func sendShutdownToDaemon(port int) error {
-	resp, err := http.Get(fmt.Sprintf(shutdownUrlTmpl, port))
+	resp, err := http.Get(fmt.Sprintf(app.ShutdownUrlTmpl, port))
 	if err != nil {
 		if errors.Is(err, syscall.ECONNREFUSED) {
 			return fmt.Errorf("server is not running")
@@ -56,7 +50,7 @@ func createDaemonContext(rootPort int) *daemon.Context {
 		LogFileName: filepath.Join(workDir, ".bazels3cache.log"),
 		LogFilePerm: 0640,
 		Umask:       027,
-		Env:         append(os.Environ(), rootPortEnv+"="+strconv.Itoa(rootPort)),
+		Env:         append(os.Environ(), app.RootPortEnv+"="+strconv.Itoa(rootPort)),
 		Args:        append(os.Args, "[bazels3cache-daemon]"),
 	}
 }
@@ -72,7 +66,7 @@ func rootProcess(port int, logFile string, ln net.Listener) error {
 	if err != nil {
 		return err
 	}
-	if string(buf) == successMsg {
+	if string(buf) == app.SuccessMsg {
 		executablePath, err := os.Executable()
 		if err != nil {
 			executablePath = ""
@@ -80,13 +74,13 @@ func rootProcess(port int, logFile string, ln net.Listener) error {
 		executableName := filepath.Base(executablePath)
 
 		portSwitch := ""
-		if port != defaultPort {
+		if port != app.DefaultPort {
 			portSwitch = " --port " + strconv.Itoa(port)
 		}
 
 		fmt.Printf(
 			"Server `%[1]s` is running, to stop it run `%[1]s --stop%[2]s` or `curl %[3]s`\n",
-			executableName, portSwitch, fmt.Sprintf(shutdownUrlTmpl, port),
+			executableName, portSwitch, fmt.Sprintf(app.ShutdownUrlTmpl, port),
 		)
 		fmt.Printf("Logging to %s\n", logFile)
 		return nil
@@ -112,7 +106,7 @@ func listenOnAny(avoidPort int) (net.Listener, int, error) {
 
 func main() {
 	bucketName := flag.String("bucket", "", "S3 bucket name")
-	daemonPort := flag.Int("port", defaultPort, "Server HTTP port number")
+	daemonPort := flag.Int("port", app.DefaultPort, "Server HTTP port number")
 	stop := flag.Bool("stop", false, "Stop application")
 	s3url := flag.String("s3url", "", "S3 url used for testing")
 	flag.Parse()
@@ -154,7 +148,7 @@ func main() {
 	infoLog := log.New(os.Stdout, "INFO\t", log.Ltime)
 	errorLog := log.New(os.Stderr, "ERROR\t", log.Ltime)
 
-	if err := daemonProcess(*bucketName, *s3url, *daemonPort, infoLog, errorLog); err != nil {
+	if err := app.DaemonProcess(*bucketName, *s3url, *daemonPort, infoLog, errorLog); err != nil {
 		errorLog.Fatal(err)
 	}
 }
